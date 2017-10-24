@@ -1,0 +1,131 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Creating AWS Infrastructure Using CloudFormation"
+Resources:
+  VPC:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: "10.0.0.0/16"
+  MyPublicSubnet:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId:
+        Ref: VPC
+      CidrBlock: "10.0.0.0/24"
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: ap-south-1a
+  MyPrivateSubnet:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId:
+        Ref: VPC
+      CidrBlock: "10.0.1.0/24"
+      MapPublicIpOnLaunch: false
+      AvailabilityZone: ap-south-1b
+  InternetGateway:
+    Type: "AWS::EC2::InternetGateway"
+  GatewayToInternet:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Properties:
+      VpcId:
+        Ref: VPC
+      InternetGatewayId:
+        Ref: InternetGateway
+  PublicRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId:
+        Ref: VPC
+  PublicRoute:
+    Type: "AWS::EC2::Route"
+    DependsOn: GatewayToInternet
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId:
+        Ref: InternetGateway
+  PublicSubnetRouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId:
+        Ref: MyPublicSubnet
+      RouteTableId:
+        Ref: PublicRouteTable
+  NatGateway:
+    Type: "AWS::EC2::NatGateway"
+    DependsOn: GatewayToInternet
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          -
+            NatEIP
+          -
+            AllocationId
+      SubnetId:
+        Ref: MyPublicSubnet
+  NatEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: "vpc"
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+        VpcId:
+            Ref: VPC
+  PrivateRoute:
+    Type: "AWS::EC2::Route"
+    DependsOn: NatGateway
+    Properties:
+      RouteTableId:
+        Ref: PrivateRouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      NatGatewayId:
+        Ref: NatGateway
+  PrivateSubnetRouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      SubnetId:
+        Ref: MyPrivateSubnet
+      RouteTableId:
+        Ref: PrivateRouteTable
+  MyWebserver:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: ap-south-1
+      ImageId: ami-02eada62
+      InstanceType: t2.micro
+      KeyName: Trial
+      VpcId:
+        Ref: VPC
+      SecurityGroups:
+        Ref: InstanceSecurityGroup
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Enable SSH Access"
+      VpcId:
+        Ref: VPC
+      SubnetId:
+        Ref: MyPublicSubnet
+      SecurityGroupIngress:
+        -
+          CidrIp: "0.0.0.0/0"
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+        -
+          CidrIp: "0.0.0.0/0"
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+      SecurityGroupEgress:
+        -
+          CidrIp: "0.0.0.0/0"
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+        -
+          CidrIp: "0.0.0.0/0"
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
