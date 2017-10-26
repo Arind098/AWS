@@ -91,14 +91,13 @@ Resources:
   MyWebserver:
     Type: AWS::EC2::Instance
     Properties:
-      AvailabilityZone: ap-south-1
-      ImageId: ami-02eada62
+      ImageId: ami-4fc58420
       InstanceType: t2.micro
-      KeyName: Trial
-      VpcId:
-        Ref: VPC
-      SecurityGroups:
-        Ref: InstanceSecurityGroup
+      KeyName: trial
+      SubnetId:
+        Ref: MyPublicSubnet
+      SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
